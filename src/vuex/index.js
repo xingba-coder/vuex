@@ -8,6 +8,10 @@ const forEachValue = function (obj, fn) {
     })
 }
 
+const isPromise = function(value){
+    return Object.prototype.toString.call(value)==='[object Promise]'
+}
+
 class Module{
     constructor(modules){
         this._raw = modules
@@ -64,6 +68,12 @@ class moduleCollection{
     }
 }
 
+function getCurrentState(state,path){
+    return path.reduce((result,current) =>{
+        return result[current]
+    },state)
+}
+
 function installModules(store,modules,path){
     if(path.length===0){
         store.state = modules.state
@@ -74,6 +84,44 @@ function installModules(store,modules,path){
         
         parent[path[path.length-1]] = modules.state
     }
+    
+    if(modules._raw.getters){
+        forEachValue(modules._raw.getters,(getters,key) =>{
+            store._getters[key] = () =>{
+                // 这里的参数不能是 modules._raw.state，没有响应式
+                // store.state 是响应式的，需要根据 path 取得store.state里面对应的 state
+                return getters(getCurrentState(store.state,path))
+            }
+        })
+    }
+
+    if(modules._raw.mutations){
+        forEachValue(modules._raw.mutations,(mutations,key) =>{
+            // 在模块里面，可能有多个同名的 mutations，所以这里可能有多个同名 key
+            // 需要用数组包装起来
+            if(!store._mutations[key]){
+                store._mutations[key] = []
+            }
+            store._mutations[key].push((preload) =>{ // store.commit(key,preload)
+                mutations.call(store,getCurrentState(store.state,path),preload)
+            })
+        })
+    }
+
+    if(modules._raw.actions){
+        forEachValue(modules._raw.actions,(actions,key) =>{
+            store._actions[key] = (preload) =>{
+                // store.dispatch({commit},preload)
+                // actions 支持promise
+                let res = actions.call(store,store,preload)
+                if(!isPromise(res)){
+                    return Promise.resolve(res)
+                }
+                return res
+            }
+        })
+    }
+
     if(modules.children){
         Object.keys(modules.children).forEach((key) =>{
             installModules(store,modules.children[key],path.concat(key))
@@ -84,11 +132,10 @@ function installModules(store,modules,path){
 class Store {
     constructor(options) {
         const store = this
-
         
         // 收集模块，将用户写的嵌套modules格式化，创造父子关系
         store._modules = new moduleCollection(options)
-        console.log(store._modules)
+        // console.log(store._modules)
         
         // 得到格式化options后，将模块 state 安装在 store.state 上
         // 以便之后调用：$store.state.aCount.cCount.count
@@ -105,11 +152,15 @@ class Store {
         //         count:1
         //     }
         // }
+        // 安装模块，包括 getters,actions,mutations
+
+        store._getters = Object.create(null)
+        store._mutations = Object.create(null)
+        store._actions = Object.create(null)
+
         installModules(store,store._modules.root,[])
         console.log(store.state)
         
-        store._store = reactive({data:store.state})
-        store.state = store._store.data
 
     }
     install(app, name) {

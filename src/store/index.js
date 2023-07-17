@@ -27,10 +27,20 @@ export default createStore({
       state: {
         count: 1
       },
+      mutations: {
+        mutationsAdd(state, preload) {
+          state.count += preload
+        }
+      },
       modules: {
         cCount: {
           state: {
             count: 1
+          },
+          mutations: {
+            mutationsAdd(state, preload) {
+              state.count += preload
+            }
           },
         },
       }
@@ -38,6 +48,11 @@ export default createStore({
     bCount: {
       state: {
         count: 1
+      },
+      mutations: {
+        mutationsAdd(state, preload) {
+          state.count += preload
+        }
       },
     }
   }
