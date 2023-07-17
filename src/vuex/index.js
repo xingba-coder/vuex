@@ -161,6 +161,17 @@ class Store {
         installModules(store,store._modules.root,[])
         console.log(store.state)
         
+        // 将收集到的 state 响应式注册
+        store._store = reactive({data:store.state})
+        store.state = store._store.data
+
+        // 将收集到的 _getters 响应式注册
+        store.getters = Object.create(null)
+        forEachValue(store._getters,(fn,key) => {
+            Object.defineProperty(store.getters,key,{
+                get:fn
+            })
+        })
 
     }
     install(app, name) {
