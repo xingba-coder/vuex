@@ -17,9 +17,12 @@ export default createStore({
   },
   actions: {
     actionAdd({ commit }, preload) {
-      setTimeout(() => {
-        commit('mutationsAdd', preload)
-      }, 1000);
+      return new Promise((resolve,reject) =>{
+        setTimeout(() => {
+          commit('mutationsAdd', preload)
+          resolve()
+        }, 1000);
+      })
     }
   },
   modules: {

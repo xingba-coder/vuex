@@ -6,11 +6,11 @@
   double:{{$store.getters.double}}
   <br>
   <button @click="$store.state.count++">错误增加</button>
-  <br>
+  <br> -->
+  <!-- 数量：{{count}}  -->
+  <button @click="actionAdd">正确增加 action</button>
   <button @click="mutationsAdd">正确增加 mutation</button>
   <br>
-  <button @click="actionAdd">正确增加 action</button> -->
-  <!-- 数量：{{count}}  -->
   数量（根模块）：{{$store.state.count}}  
   <button @click="$store.state.count++">增加</button>
   <br>
@@ -34,7 +34,9 @@ export default {
       store.commit('mutationsAdd',1)
     }
     const actionAdd = () =>{
-      store.dispatch('actionAdd',1)
+      store.dispatch('actionAdd',1).then(() =>{
+        console.log('actions执行完毕')
+      })
     }
     return {
       count:computed(() => store.state.count),

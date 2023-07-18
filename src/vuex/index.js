@@ -110,15 +110,18 @@ function installModules(store,modules,path){
 
     if(modules._raw.actions){
         forEachValue(modules._raw.actions,(actions,key) =>{
-            store._actions[key] = (preload) =>{
+            if(!store._actions[key]){
+                store._actions[key] = []
+            }
+            store._actions[key].push((preload) =>{
                 // store.dispatch({commit},preload)
-                // actions 支持promise
+                // actions执行后返回的是promise
                 let res = actions.call(store,store,preload)
                 if(!isPromise(res)){
                     return Promise.resolve(res)
                 }
                 return res
-            }
+            })
         })
     }
 
@@ -173,6 +176,18 @@ class Store {
             })
         })
 
+        store.commit = (type,preload) =>{
+            store._mutations[type].forEach((fn) =>{
+                fn(preload)
+            })
+        }
+        store.dispatch = (type,preload) =>{
+            const arr = []
+            // map 返回一个新数组
+            return Promise.all(store._actions[type].map((fn) =>{
+                fn(preload)
+            }))
+        }
     }
     install(app, name) {
         // app 是vue3暴露的对象
