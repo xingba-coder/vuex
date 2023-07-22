@@ -1,4 +1,4 @@
-import { inject, reactive } from "vue"
+import { inject, reactive, watch } from "vue"
 
 const storeKey = 'store'
 
@@ -190,6 +190,19 @@ class Store {
         store._store = reactive({data:store.state})
         store.state = store._store.data
 
+        // 是否严格模式
+        // 正确改变数据状态应该是通过 mutations，而不是直接 store.state.count++
+        // 所以如果是严格模式，这里需要监听 store.state 的变化，并且定义一个状态 isCommiting 
+        // 在调用 mutations 时改变这个状态
+        store.strict = options.strict
+        store.isCommiting = false
+
+        if(store.strict){
+            watch(() =>store.state,() =>{
+                console.assert(store.isCommiting,'state must be changed by mutations')
+            },{deep:true,flush:'sync'})
+        }
+
         // 将收集到的 _getters 响应式注册
         store.getters = Object.create(null)
         forEachValue(store._getters,(fn,key) => {
@@ -199,8 +212,10 @@ class Store {
         })
 
         store.commit = (type,preload) =>{
-            store._mutations[type].forEach((fn) =>{
-                fn(preload)
+            this.withCommit(() =>{
+                store._mutations[type].forEach((fn) =>{
+                    fn(preload)
+                })
             })
         }
         store.dispatch = (type,preload) =>{
@@ -210,6 +225,11 @@ class Store {
                 fn(preload)
             }))
         }
+    }
+    withCommit(fn){
+        this.isCommiting = true
+        fn()
+        this.isCommiting = false
     }
     install(app, name) {
         // app 是vue3暴露的对象
