@@ -1,7 +1,7 @@
 import { createStore } from '@/vuex'
 
 export default createStore({
-  // strict: true,
+  strict: true,
   state: {
     count: 1
   },
@@ -27,6 +27,7 @@ export default createStore({
   },
   modules: {
     aCount: {
+      namespaced:true,
       state: {
         count: 1
       },
@@ -37,6 +38,7 @@ export default createStore({
       },
       modules: {
         cCount: {
+          namespaced:true,
           state: {
             count: 1
           },
@@ -49,6 +51,7 @@ export default createStore({
       }
     },
     bCount: {
+      namespaced:true,
       state: {
         count: 1
       },

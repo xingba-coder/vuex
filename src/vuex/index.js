@@ -17,6 +17,7 @@ class Module{
         this._raw = modules
         this.state = modules.state
         this.children = {}
+        this.namespaced = modules.namespaced
     }
     getChild(key){
         return this.children[key]
@@ -74,7 +75,22 @@ function getCurrentState(state,path){
     },state)
 }
 
-function installModules(store,modules,path){
+function getNameSpace(modules,path){
+    let root = modules.root
+    // 传入的是 根模块
+    // 当 path 是[],返回空字符串
+    // 2、当 path 是 [aCount] ,根据path，取得根模块下的对应的 aCount , modules.getChild(aCount)
+    // 然后判断 aCount 模块下是否定义namespaced，有则返回 aCount/
+    // 当 path 是 [aCount,cCount] ,重复2，然后根据步骤2 取得的子模块，再往下找子模块cCount，
+    // 然后判断 cCount 模块下是否定义namespaced，有则返回 aCount/cCount/
+    // [] => ''  [aCount] => 'aCount/'  [aCount,cCount] => 'aCount/cCount'
+    return path.reduce((module,current) =>{
+        root = root.children[current]
+        return root.namespaced?(module+current+'/'):''  
+    },'')
+}
+
+function installModules(store,modules,path,root){
     if(path.length===0){
         store.state = modules.state
     }else{
@@ -84,6 +100,12 @@ function installModules(store,modules,path){
         
         parent[path[path.length-1]] = modules.state
     }
+
+    // 命名空间
+    // 调用方式 store.commit('aCount/cCount/mutationsAdd',1)
+    // 所以这里先根据path取得设置了 namespaced 的模块名字，拼接后注册到 mutations，actions的名字上
+    const namespace = getNameSpace(root,path)
+    console.log(namespace)
     
     if(modules._raw.getters){
         forEachValue(modules._raw.getters,(getters,key) =>{
@@ -99,10 +121,10 @@ function installModules(store,modules,path){
         forEachValue(modules._raw.mutations,(mutations,key) =>{
             // 在模块里面，可能有多个同名的 mutations，所以这里可能有多个同名 key
             // 需要用数组包装起来
-            if(!store._mutations[key]){
-                store._mutations[key] = []
+            if(!store._mutations[namespace + key]){
+                store._mutations[namespace + key] = []
             }
-            store._mutations[key].push((preload) =>{ // store.commit(key,preload)
+            store._mutations[namespace + key].push((preload) =>{ // store.commit(key,preload)
                 mutations.call(store,getCurrentState(store.state,path),preload)
             })
         })
@@ -127,7 +149,7 @@ function installModules(store,modules,path){
 
     if(modules.children){
         Object.keys(modules.children).forEach((key) =>{
-            installModules(store,modules.children[key],path.concat(key))
+            installModules(store,modules.children[key],path.concat(key),root)
         })
     }
 }
@@ -161,7 +183,7 @@ class Store {
         store._mutations = Object.create(null)
         store._actions = Object.create(null)
 
-        installModules(store,store._modules.root,[])
+        installModules(store,store._modules.root,[],store._modules)
         console.log(store.state)
         
         // 将收集到的 state 响应式注册

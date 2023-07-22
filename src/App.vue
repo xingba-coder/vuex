@@ -8,7 +8,7 @@
   <button @click="$store.state.count++">错误增加</button>
   <br> -->
   <!-- 数量：{{count}}  -->
-  <button @click="actionAdd">正确增加 action</button>
+  <!-- <button @click="actionAdd">正确增加 action</button>
   <button @click="mutationsAdd">正确增加 mutation</button>
   <br>
   数量（根模块）：{{$store.state.count}}  
@@ -19,7 +19,20 @@
   <br>
   数量（cCount模块）：{{$store.state.aCount.cCount.count}} 
   <button @click="$store.state.aCount.cCount.count++">增加</button>
+  <br> -->
+
+  数量（根模块）：{{$store.state.count}}  
+  <button @click="$store.commit('mutationsAdd',1)">增加</button>
+  <button @click="$store.state.count++">错误增加</button>
   <br>
+  数量（aCount模块）：{{$store.state.aCount.count}} 
+  <button @click="$store.commit('aCount/mutationsAdd',1)">增加a</button>
+  <br>
+  数量（cCount模块）：{{$store.state.aCount.cCount.count}} 
+  <button @click="$store.commit('aCount/cCount/mutationsAdd',1)">增加c</button>
+  <br>
+  数量（bCount模块）：{{$store.state.bCount.count}} 
+  <button @click="$store.commit('bCount/mutationsAdd',1)">增加b</button>
 </template>
 
 <script>
