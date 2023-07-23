@@ -1,7 +1,19 @@
 import { createStore } from '@/vuex'
 
+const customPlugin = (store) =>{
+  const local = sessionStorage.getItem('vuexState')
+  if(local){
+    store.replaceState(JSON.parse(local))
+  }
+  store.subscribe((mutation,state) =>{
+    // console.log(mutation,state)
+    sessionStorage.setItem('vuexState',JSON.stringify(state))
+  })
+}
+
 export default createStore({
   strict: true,
+  plugins:[customPlugin],
   state: {
     count: 1
   },

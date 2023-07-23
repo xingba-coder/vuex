@@ -182,13 +182,13 @@ class Store {
         store._getters = Object.create(null)
         store._mutations = Object.create(null)
         store._actions = Object.create(null)
-
+        
         installModules(store,store._modules.root,[],store._modules)
         console.log(store.state)
         
         // 将收集到的 state 响应式注册
         store._store = reactive({data:store.state})
-        store.state = store._store.data
+        
 
         // 是否严格模式
         // 正确改变数据状态应该是通过 mutations，而不是直接 store.state.count++
@@ -196,10 +196,9 @@ class Store {
         // 在调用 mutations 时改变这个状态
         store.strict = options.strict
         store.isCommiting = false
-
         if(store.strict){
             watch(() =>store.state,() =>{
-                console.assert(store.isCommiting,'state must be changed by mutations')
+                console.assert(store.isCommiting,'do not mutate vuex store state outside mutation handlers.')
             },{deep:true,flush:'sync'})
         }
 
@@ -210,12 +209,31 @@ class Store {
                 get:fn
             })
         })
+        
+        store._subscribe = []
+        store.subscribe = (fn) =>{
+            store._subscribe.push(fn)
+        }
+
+        store.replaceState = (newState) =>{
+            this.withCommit(() =>{
+                store._store.data = newState
+            })
+        }
+
+        const plugins = options.plugins
+        plugins.forEach(fn => {
+            fn(store)
+        });
 
         store.commit = (type,preload) =>{
             this.withCommit(() =>{
                 store._mutations[type].forEach((fn) =>{
                     fn(preload)
                 })
+                store._subscribe.forEach(fn => {
+                    fn({type:type,preload:preload},store.state)
+                });
             })
         }
         store.dispatch = (type,preload) =>{
@@ -225,6 +243,9 @@ class Store {
                 fn(preload)
             }))
         }
+
+        // 这一步需要放在最后
+        store.state = store._store.data
     }
     withCommit(fn){
         this.isCommiting = true
