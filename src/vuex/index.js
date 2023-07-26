@@ -66,6 +66,7 @@ class moduleCollection{
                 this.register(rootModule.modules[key],path.concat(key))
             })
         }
+        return newModule
     }
 }
 
@@ -91,14 +92,19 @@ function getNameSpace(modules,path){
 }
 
 function installModules(store,modules,path,root){
-    if(path.length===0){
-        store.state = modules.state
-    }else{
+    const isRoot = !path.length;
+    // if(path.length===0){
+    //     store.state = modules.state
+    // }else{
+    // }
+    if(!isRoot){
         const parent = path.slice(0,-1).reduce((result,current) =>{
             return result[current]
-        },store.state)
-        
-        parent[path[path.length-1]] = modules.state
+        },root.root.state)
+        // root.root.state 从根开始找起
+        store.withCommit(() =>{
+            parent[path[path.length-1]] = modules.state
+        })
     }
 
     // 命名空间
@@ -154,6 +160,31 @@ function installModules(store,modules,path,root){
     }
 }
 
+function resetStore(store,state){
+    // 将收集到的 state 响应式注册
+    store._store = reactive({data:state})
+    // store.state = store._store.data
+    
+    // 将收集到的 _getters 响应式注册
+    store.getters = Object.create(null)
+    forEachValue(store._getters,(fn,key) => {
+        Object.defineProperty(store.getters,key,{
+            get:fn
+        })
+    })
+
+    // 是否严格模式
+    // 正确改变数据状态应该是通过 mutations，而不是直接 store.state.count++
+    // 所以如果是严格模式，这里需要监听 store.state 的变化，并且定义一个状态 isCommiting 
+    // 在调用 mutations 时改变这个状态
+    if(store.strict){
+        watch(() =>store._store.data,() =>{
+            console.assert(store.isCommiting,'do not mutate vuex store state outside mutation handlers.')
+        },{deep:true,flush:'sync'})
+    }
+
+}
+
 class Store {
     constructor(options) {
         const store = this
@@ -178,47 +209,20 @@ class Store {
         //     }
         // }
         // 安装模块，包括 getters,actions,mutations
-
         store._getters = Object.create(null)
         store._mutations = Object.create(null)
         store._actions = Object.create(null)
-        
         installModules(store,store._modules.root,[],store._modules)
-        console.log(store.state)
+        // console.log(store.state)
         
-        // 将收集到的 state 响应式注册
-        store._store = reactive({data:store.state})
-        
-
-        // 是否严格模式
-        // 正确改变数据状态应该是通过 mutations，而不是直接 store.state.count++
-        // 所以如果是严格模式，这里需要监听 store.state 的变化，并且定义一个状态 isCommiting 
-        // 在调用 mutations 时改变这个状态
         store.strict = options.strict
         store.isCommiting = false
-        if(store.strict){
-            watch(() =>store.state,() =>{
-                console.assert(store.isCommiting,'do not mutate vuex store state outside mutation handlers.')
-            },{deep:true,flush:'sync'})
-        }
 
-        // 将收集到的 _getters 响应式注册
-        store.getters = Object.create(null)
-        forEachValue(store._getters,(fn,key) => {
-            Object.defineProperty(store.getters,key,{
-                get:fn
-            })
-        })
+        resetStore(store,store._modules.root.state)
         
         store._subscribe = []
         store.subscribe = (fn) =>{
             store._subscribe.push(fn)
-        }
-
-        store.replaceState = (newState) =>{
-            this.withCommit(() =>{
-                store._store.data = newState
-            })
         }
 
         const plugins = options.plugins
@@ -228,12 +232,14 @@ class Store {
 
         store.commit = (type,preload) =>{
             this.withCommit(() =>{
-                store._mutations[type].forEach((fn) =>{
-                    fn(preload)
-                })
-                store._subscribe.forEach(fn => {
-                    fn({type:type,preload:preload},store.state)
-                });
+                if(store._mutations[type]){
+                    store._mutations[type].forEach((fn) =>{
+                        fn(preload)
+                    })
+                    store._subscribe.forEach(fn => {
+                        fn({type:type,preload:preload},store.state)
+                    });
+                }
             })
         }
         store.dispatch = (type,preload) =>{
@@ -245,7 +251,29 @@ class Store {
         }
 
         // 这一步需要放在最后
-        store.state = store._store.data
+        // store.state = store._store.data
+    }
+    get state(){
+        return this._store.data
+    }
+    replaceState(newState){
+        this.withCommit(() =>{
+            this._store.data = newState
+            // this.state = this._store.data
+        })
+    }
+    // 动态注册模块
+    registerModules(path,modules){
+        const store = this
+        // 把新增的模块格式化，安装在对应的父级元素上
+        let newModule = store._modules.register(modules,path)
+
+        // 格式化后的模块的 state 注册到 store.state 上
+        installModules(store,newModule,path,store._modules)
+
+        // 重新给 state，getters 注册响应式
+        // 将收集到的 state 响应式注册
+        resetStore(store,store.state)
     }
     withCommit(fn){
         this.isCommiting = true

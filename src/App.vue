@@ -24,8 +24,8 @@
   数量（根模块）：{{$store.state.count}}  
   <button @click="$store.commit('mutationsAdd',1)">增加</button>
   <button @click="$store.state.count++">错误增加</button>
-  <!-- <button @click="actionAdd">正确增加 action</button>
-  <button @click="mutationsAdd">正确增加 mutation</button> -->
+  <button @click="actionAdd">正确增加 action</button>
+  <!-- <button @click="mutationsAdd">正确增加 mutation</button> -->
   <br>
   数量（aCount模块）：{{$store.state.aCount.count}} 
   <button @click="$store.commit('aCount/mutationsAdd',1)">增加a</button>

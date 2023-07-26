@@ -11,7 +11,7 @@ const customPlugin = (store) =>{
   })
 }
 
-export default createStore({
+const store = createStore({
   strict: true,
   plugins:[customPlugin],
   state: {
@@ -48,19 +48,19 @@ export default createStore({
           state.count += preload
         }
       },
-      modules: {
-        cCount: {
-          namespaced:true,
-          state: {
-            count: 1
-          },
-          mutations: {
-            mutationsAdd(state, preload) {
-              state.count += preload
-            }
-          },
-        },
-      }
+      // modules: {
+      //   cCount: {
+      //     namespaced:true,
+      //     state: {
+      //       count: 1
+      //     },
+      //     mutations: {
+      //       mutationsAdd(state, preload) {
+      //         state.count += preload
+      //       }
+      //     },
+      //   },
+      // }
     },
     bCount: {
       namespaced:true,
@@ -75,3 +75,17 @@ export default createStore({
     }
   }
 })
+
+store.registerModules(['aCount','cCount'],{
+  namespaced:true,
+  state: {
+    count: 100
+  },
+  mutations: {
+    mutationsAdd(state, preload) {
+      state.count += preload
+    }
+  },
+})
+
+export default store
