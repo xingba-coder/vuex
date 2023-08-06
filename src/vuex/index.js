@@ -91,7 +91,7 @@ function getNameSpace(modules,path){
     },'')
 }
 
-function installModules(store,modules,path,root){
+function installModules(store,modules,path,rootState){
     const isRoot = !path.length;
     // if(path.length===0){
     //     store.state = modules.state
@@ -100,7 +100,7 @@ function installModules(store,modules,path,root){
     if(!isRoot){
         const parent = path.slice(0,-1).reduce((result,current) =>{
             return result[current]
-        },root.root.state)
+        },rootState)
         // root.root.state 从根开始找起
         store.withCommit(() =>{
             parent[path[path.length-1]] = modules.state
@@ -110,7 +110,7 @@ function installModules(store,modules,path,root){
     // 命名空间
     // 调用方式 store.commit('aCount/cCount/mutationsAdd',1)
     // 所以这里先根据path取得设置了 namespaced 的模块名字，拼接后注册到 mutations，actions的名字上
-    const namespace = getNameSpace(root,path)
+    const namespace = getNameSpace(store._modules,path)
     console.log(namespace)
     
     if(modules._raw.getters){
@@ -155,7 +155,7 @@ function installModules(store,modules,path,root){
 
     if(modules.children){
         Object.keys(modules.children).forEach((key) =>{
-            installModules(store,modules.children[key],path.concat(key),root)
+            installModules(store,modules.children[key],path.concat(key),rootState)
         })
     }
 }
@@ -212,7 +212,7 @@ class Store {
         store._getters = Object.create(null)
         store._mutations = Object.create(null)
         store._actions = Object.create(null)
-        installModules(store,store._modules.root,[],store._modules)
+        installModules(store,store._modules.root,[],store._modules.root.state)
         // console.log(store.state)
         
         store.strict = options.strict
@@ -256,24 +256,23 @@ class Store {
     get state(){
         return this._store.data
     }
-    replaceState(newState){
-        this.withCommit(() =>{
-            this._store.data = newState
-            // this.state = this._store.data
-        })
-    }
     // 动态注册模块
+    // 动态注册的模块无法执行插件上的方法，比如插件定义了持久化，动态注册的模块不具备持久化
     registerModules(path,modules){
         const store = this
         // 把新增的模块格式化，安装在对应的父级元素上
         let newModule = store._modules.register(modules,path)
 
         // 格式化后的模块的 state 注册到 store.state 上
-        installModules(store,newModule,path,store._modules)
-
+        installModules(store,newModule,path,store.state)
         // 重新给 state，getters 注册响应式
         // 将收集到的 state 响应式注册
         resetStore(store,store.state)
+    }
+    replaceState(newState){
+        this.withCommit(() =>{
+            this._store.data = newState
+        })
     }
     withCommit(fn){
         this.isCommiting = true

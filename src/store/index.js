@@ -48,15 +48,35 @@ const store = createStore({
           state.count += preload
         }
       },
+      actions: {
+        actionAdd({ commit }, preload) {
+          return new Promise((resolve,reject) =>{
+            setTimeout(() => {
+              commit('aCount/mutationsAdd', preload)
+              resolve()
+            }, 1000);
+          })
+        }
+      },
       // modules: {
       //   cCount: {
       //     namespaced:true,
       //     state: {
-      //       count: 1
+      //       count: 100
       //     },
       //     mutations: {
       //       mutationsAdd(state, preload) {
       //         state.count += preload
+      //       }
+      //     },
+      //     actions: {
+      //       actionAdd({ commit }, preload) {
+      //         return new Promise((resolve,reject) =>{
+      //           setTimeout(() => {
+      //             commit('aCount/cCount/mutationsAdd', preload)
+      //             resolve()
+      //           }, 1000);
+      //         })
       //       }
       //     },
       //   },
@@ -72,6 +92,16 @@ const store = createStore({
           state.count += preload
         }
       },
+      actions: {
+        actionAdd({ commit }, preload) {
+          return new Promise((resolve,reject) =>{
+            setTimeout(() => {
+              commit('bCount/mutationsAdd', preload)
+              resolve()
+            }, 1000);
+          })
+        }
+      },
     }
   }
 })
@@ -84,6 +114,16 @@ store.registerModules(['aCount','cCount'],{
   mutations: {
     mutationsAdd(state, preload) {
       state.count += preload
+    }
+  },
+  actions: {
+    actionAdd({ commit }, preload) {
+      return new Promise((resolve,reject) =>{
+        setTimeout(() => {
+          commit('aCount/cCount/mutationsAdd', preload)
+          resolve()
+        }, 1000);
+      })
     }
   },
 })
